@@ -1,0 +1,280 @@
+* {
+  user-select: none; /* Prevent accidental text selection while dragging */
+}
+body {
+  font-family:
+    "Segoe UI",
+    "Quicksand",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  background: #d9c5a7;
+}
+
+/* ---------- BOARD ---------- */
+.board-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23f6efd8"/><rect x="0" y="0" width="40" height="40" fill="%23ede3c2"/><rect x="40" y="40" width="40" height="40" fill="%23ede3c2"/></svg>');
+  background-size: 60px 60px;
+}
+.board-container:active {
+  cursor: grabbing;
+}
+.board {
+  position: absolute;
+  width: 5000px;
+  height: 5000px;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* ---------- STICKY NOTE ---------- */
+.note {
+  position: absolute;
+  cursor: grab;
+  user-select: none;
+  background: #fffde7;
+  width: 260px;
+  padding: 14px 12px 12px 12px;
+  border-radius: 2px 8px 8px 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  transition:
+    box-shadow 0.2s,
+    transform 0.1s;
+  border-bottom: 2px solid #f5d742;
+  border-right: 1px solid #f5d742;
+  font-family: "Indie Flower", "Segoe UI", cursive;
+  backdrop-filter: blur(1px);
+  touch-action: none;
+}
+.note:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  transform: scale(1.01);
+}
+.note:active {
+  cursor: grabbing;
+}
+.note.dragging {
+  opacity: 0.85;
+  cursor: grabbing;
+  box-shadow: 0 20px 30px rgba(0, 0, 0, 0.3);
+  transform: rotate(1deg) scale(1.02);
+  z-index: 999;
+  transition: none;
+}
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #a55d35;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px dashed #f7d44a;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.note-content {
+  font-size: 14px;
+  line-height: 1.4;
+  color: #3e2a1f;
+  word-break: break-word;
+}
+
+/* ---------- CURTAIN FORM (SLIDING) ---------- */
+.curtain-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1100;
+  pointer-events: none;
+}
+.add-note {
+  position: relative;
+  margin: 0 auto;
+  width: 360px;
+  max-width: 90vw;
+  background: rgba(255, 248, 225, 0.98);
+  backdrop-filter: blur(12px);
+  border-radius: 0 0 24px 24px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+  padding: 18px 22px 24px;
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  transform: translateY(0);
+  pointer-events: auto;
+  border: 1px solid rgba(255, 215, 120, 0.6);
+}
+.add-note.hidden {
+  transform: translateY(-100%);
+}
+.add-note h1 {
+  margin: 0 0 12px 0;
+  font-size: 1.6rem;
+  color: #b45f2b;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+.add-note input,
+.add-note textarea {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid #f0d28c;
+  border-radius: 40px;
+  font-family: inherit;
+  font-size: 14px;
+  background: #fffef7;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+.add-note textarea {
+  border-radius: 20px;
+  resize: vertical;
+  min-height: 80px;
+}
+.add-note input:focus,
+.add-note textarea:focus {
+  outline: none;
+  border-color: #e6b450;
+  box-shadow: 0 0 0 3px rgba(230, 180, 80, 0.2);
+}
+.char-counter {
+  text-align: right;
+  font-size: 12px;
+  color: #a5713c;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+#post-note-btn {
+  background: #c47a44;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 60px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  width: 100%;
+  transition: 0.2s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+#post-note-btn:hover {
+  background: #9b5e2c;
+  transform: scale(0.98);
+}
+.error {
+  color: #c7362b;
+  font-size: 13px;
+  margin-top: 8px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Pull tab (curtain handle) */
+.pull-tab {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 32px;
+  background: rgba(196, 122, 68, 0.9);
+  backdrop-filter: blur(8px);
+  border-radius: 0 0 30px 30px;
+  cursor: pointer;
+  z-index: 1150;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  transition: background 0.2s;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.pull-tab:hover {
+  background: #a05f32;
+}
+.pull-tab::before {
+  content: "☰";
+  font-size: 22px;
+}
+.add-note.hidden ~ .pull-tab::before {
+  content: "⌄";
+}
+/* Since pull-tab is sibling, we adjust using JS is easier, but CSS also works */
+.pull-tab.open::before {
+  content: "✕";
+  font-size: 16px;
+}
+
+/* Controls (zoom) */
+.controls {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  background: rgba(45, 30, 20, 0.75);
+  backdrop-filter: blur(12px);
+  padding: 8px 20px;
+  border-radius: 60px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.zoom-btn {
+  background: #f5e2b2;
+  border: none;
+  font-size: 20px;
+  font-weight: bold;
+  padding: 6px 20px;
+  border-radius: 40px;
+  cursor: pointer;
+  transition: 0.1s;
+  color: #6b3f1c;
+}
+.zoom-btn:active {
+  transform: scale(0.94);
+}
+.zoom-display {
+  font-size: 16px;
+  font-weight: bold;
+  background: #2c1a0c;
+  padding: 6px 16px;
+  border-radius: 40px;
+  color: #ffeaac;
+  letter-spacing: 1px;
+}
+
+.back-link {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  color: #ffefc0;
+  padding: 6px 16px;
+  border-radius: 40px;
+  text-decoration: none;
+  font-weight: 500;
+  z-index: 1000;
+  font-size: 14px;
+  transition: 0.2s;
+}
+.back-link:hover {
+  background: #613913;
+  color: white;
+}

@@ -1,49 +1,77 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Random Chat App</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div id="app">
-        <!-- Setup Screen -->
-        <div id="setup-screen" class="screen">
-            <h1>Random Chat</h1>
-            <div class="form-group">
-                <label for="chatter-name">Your Name:</label>
-                <input type="text" id="chatter-name" placeholder="Enter your name">
-            </div>
-            <div class="form-group">
-                <label for="group-size">Group Size:</label>
-                <select id="group-size">
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                </select>
-            </div>
-            <button id="start-btn">Start Chat</button>
-            <button id="cancel-btn" class="hidden">Cancel</button>
-            <div id="setup-status" class="status-area"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>Random Chat · Group Matching</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Setup Screen -->
+      <div id="setup-screen" class="screen setup-screen">
+        <div class="card">
+          <div class="logo">✨ Random Chat</div>
+          <div class="form-group">
+            <label>Your name</label>
+            <input
+              type="text"
+              id="chatter-name"
+              placeholder="e.g., Alex"
+              autocomplete="off"
+            />
+          </div>
+          <div class="form-group">
+            <label>Group size</label>
+            <select id="group-size">
+              <option value="2">2 people</option>
+              <option value="3">3 people</option>
+              <option value="4">4 people</option>
+              <option value="5">5 people</option>
+              <option value="6">6 people</option>
+            </select>
+          </div>
+          <div class="button-group">
+            <button id="start-btn" class="btn-primary">Start Chat</button>
+            <a href="freedom_wall.html" class="btn-secondary"
+              >📌 Freedom Wall</a
+            >
+          </div>
+          <div id="setup-status" class="status-area"></div>
+          <button id="cancel-btn" class="btn-cancel hidden">
+            Cancel search
+          </button>
         </div>
+      </div>
 
-        <!-- Chat Screen -->
-        <div id="chat-screen" class="screen hidden">
-            <div class="chat-header">
-                <h2 id="chat-title">Chatting...</h2>
-                <button id="leave-btn">Leave Chat</button>
-            </div>
-            <div id="chat-messages" class="message-area"></div>
-            <div class="chat-input-area">
-                <input type="text" id="message-input" placeholder="Type a message...">
-                <button id="send-btn">Send</button>
-            </div>
-            <div id="chat-status" class="status-area"></div>
+      <!-- Chat Screen -->
+      <div id="chat-screen" class="screen chat-screen hidden">
+        <div class="chat-header">
+          <div class="header-title">
+            <span class="online-dot"></span>
+            <h2 id="chat-title">Group chat</h2>
+          </div>
+          <button id="leave-btn" class="btn-leave">Leave</button>
         </div>
+        <div id="chat-messages" class="message-area"></div>
+        <div class="chat-input-wrapper">
+          <textarea
+            id="message-input"
+            placeholder="Type a message..."
+            rows="1"
+          ></textarea>
+          <button id="send-btn" class="btn-send">Send</button>
+        </div>
+        <div id="chat-status" class="status-area"></div>
+      </div>
     </div>
     <script src="app.js"></script>
-</body>
+  </body>
 </html>

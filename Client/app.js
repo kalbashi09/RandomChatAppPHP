@@ -17,14 +17,20 @@ const messageInput = document.getElementById("message-input");
 const sendBtn = document.getElementById("send-btn");
 const chatStatus = document.getElementById("chat-status");
 
+// Auto-resize textarea
+messageInput.addEventListener("input", function () {
+  this.style.height = "auto";
+  this.style.height = Math.min(this.scrollHeight, 100) + "px";
+});
+
 function connectWebSocket() {
-  // Using Cloudflare Tunnel for public access
+  // Use your WebSocket server address (localhost or tunnel)
   ws = new WebSocket("ws://localhost:8081");
 
   ws.onopen = () => {
-    setupStatus.textContent = "Connected to server!";
-    setupStatus.style.color = "green";
-    console.log("Connected");
+    setupStatus.textContent = "✅ Connected! Looking for group...";
+    setupStatus.style.color = "#a0ffa0";
+    console.log("Connected to chat server");
   };
 
   ws.onmessage = (event) => {
@@ -45,30 +51,29 @@ function connectWebSocket() {
         handleError(data.message);
         break;
       default:
-        console.warn("Unknown message type:", data.type);
+        console.warn("Unknown type:", data.type);
     }
   };
 
   ws.onclose = () => {
     console.log("Disconnected");
-    handleError("Disconnected from server");
+    handleError("Connection lost");
     resetUI();
   };
 
   ws.onerror = (err) => {
-    console.error("WebSocket error:", err);
-    handleError("WebSocket error occurred");
+    console.error("WebSocket error", err);
+    handleError("Connection error");
   };
 }
 
 function handleMatched(data) {
   currentGroupId = data.groupId;
-  chatTitle.textContent = "Group Chat";
+  chatTitle.textContent = `👥 ${data.members.length} members`;
   setupScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
-
-  chatMessages.innerHTML = ""; // Clear previous
-  handleSystem({ text: `Matched! Members: ${data.members.join(", ")}` });
+  chatMessages.innerHTML = "";
+  handleSystem({ text: `✨ Matched! Members: ${data.members.join(", ")}` });
 }
 
 function handleMessage(data) {
@@ -81,12 +86,14 @@ function handleSystem(data) {
 }
 
 function handleError(msg) {
-  if (setupScreen.classList.contains("hidden")) {
-    chatStatus.textContent = msg;
-  } else {
-    setupStatus.textContent = msg;
-  }
-  alert(msg);
+  const targetStatus = setupScreen.classList.contains("hidden")
+    ? chatStatus
+    : setupStatus;
+  targetStatus.textContent = msg;
+  setTimeout(() => {
+    if (targetStatus.textContent === msg) targetStatus.textContent = "";
+  }, 4000);
+  if (!setupScreen.classList.contains("hidden")) alert(msg);
 }
 
 function appendMessage(sender, text, className) {
@@ -94,16 +101,24 @@ function appendMessage(sender, text, className) {
   msgDiv.className = `message ${className}`;
 
   if (className !== "system") {
-    const senderDiv = document.createElement("div");
-    senderDiv.style.fontSize = "10px";
-    senderDiv.style.fontWeight = "bold";
-    senderDiv.textContent = sender;
-    msgDiv.appendChild(senderDiv);
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "msg-name";
+    nameSpan.textContent = sender;
+    msgDiv.appendChild(nameSpan);
   }
 
-  const textDiv = document.createElement("div");
-  textDiv.textContent = text;
-  msgDiv.appendChild(textDiv);
+  const textSpan = document.createElement("span");
+  textSpan.textContent = text;
+  msgDiv.appendChild(textSpan);
+
+  // optional timestamp
+  const timeSpan = document.createElement("span");
+  timeSpan.className = "msg-time";
+  timeSpan.textContent = new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  msgDiv.appendChild(timeSpan);
 
   chatMessages.appendChild(msgDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -115,16 +130,18 @@ function resetUI() {
   currentGroupId = null;
   startBtn.disabled = false;
   cancelBtn.classList.add("hidden");
+  if (ws) ws.close();
+  ws = null;
 }
 
-// Event Listeners
+// Event listeners
 startBtn.addEventListener("click", () => {
   myName = chatterNameInput.value.trim();
   const groupSize = parseInt(groupSizeSelect.value);
 
   if (!myName) {
-    setupStatus.textContent = "Please enter your name";
-    setupStatus.style.color = "red";
+    setupStatus.textContent = "⚠️ Please enter a name";
+    setupStatus.style.color = "#ff8a8a";
     return;
   }
 
@@ -132,7 +149,6 @@ startBtn.addEventListener("click", () => {
     connectWebSocket();
   }
 
-  // Wait for connection before sending
   const checkConn = setInterval(() => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       clearInterval(checkConn);
@@ -145,47 +161,36 @@ startBtn.addEventListener("click", () => {
       );
       startBtn.disabled = true;
       cancelBtn.classList.remove("hidden");
-      setupStatus.textContent = "Searching for a group...";
-      setupStatus.style.color = "blue";
+      setupStatus.textContent = "🔍 Searching for group...";
+      setupStatus.style.color = "#ffd966";
     }
   }, 100);
 });
 
 cancelBtn.addEventListener("click", () => {
-  if (ws) {
-    ws.close();
-  }
+  if (ws) ws.close();
   resetUI();
 });
 
 sendBtn.addEventListener("click", () => {
   const text = messageInput.value.trim();
   if (text && ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(
-      JSON.stringify({
-        action: "send",
-        message: text,
-      }),
-    );
+    ws.send(JSON.stringify({ action: "send", message: text }));
     messageInput.value = "";
+    messageInput.style.height = "auto";
   }
 });
 
 messageInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
     sendBtn.click();
   }
 });
 
 leaveBtn.addEventListener("click", () => {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(
-      JSON.stringify({
-        action: "leave",
-      }),
-    );
-  }
-  if (ws) {
+    ws.send(JSON.stringify({ action: "leave" }));
     ws.close();
   }
   resetUI();
