@@ -1,0 +1,13 @@
+{
+    "name": "random-chat-app/backend",
+    "description": "Random Chat App Backend using Ratchet",
+    "require": {
+        "cboden/ratchet": "^0.4",
+        "ratchet/pawl": "^0.4.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "RandomChat\\": "src/"
+        }
+    }
+}
