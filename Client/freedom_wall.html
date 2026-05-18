@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Freedom Wall</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f4e9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #d4a373;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            color: #d4a373;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .add-note {
+            background: #fdf8e7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .add-note input, .add-note textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        .add-note textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .char-counter {
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        #post-note-btn {
+            background: #d4a373;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #post-note-btn:hover {
+            background: #c08a5a;
+        }
+        .error {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .board {
+            position: relative;
+            min-height: 600px;
+            background: #fdf8e7;
+            border: 2px dashed #d4a373;
+            overflow: auto;
+            border-radius: 8px;
+        }
+        .note {
+            position: absolute;
+            cursor: grab;
+            user-select: none;
+            background: #fff9c4;
+            width: 240px;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+            transition: box-shadow 0.1s;
+        }
+        .note:active {
+            cursor: grabbing;
+        }
+        .note.dragging {
+            opacity: 0.7;
+            cursor: grabbing;
+        }
+        .note-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+        }
+        .note-content {
+            font-size: 14px;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Home</a>
+        <h1>📌 Freedom Wall (Drag Notes)</h1>
+
+        <!-- Add Note Form -->
+        <div class="add-note">
+            <input type="text" id="wall-username" placeholder="Your name" maxlength="50">
+            <textarea id="wall-content" placeholder="Write your sticky note (max 300 chars)..." maxlength="300"></textarea>
+            <div class="char-counter"><span id="char-count">0</span>/300</div>
+            <button id="post-note-btn">+ Post Note</button>
+            <div id="post-error" class="error"></div>
+        </div>
+
+        <!-- Draggable Board -->
+        <div id="board" class="board"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        const board = document.getElementById('board');
+        const usernameInput = document.getElementById('wall-username');
+        const contentInput = document.getElementById('wall-content');
+        const charCount = document.getElementById('char-count');
+        const postBtn = document.getElementById('post-note-btn');
+        const postError = document.getElementById('post-error');
+
+        // Character counter
+        contentInput.addEventListener('input', () => {
+            charCount.textContent = contentInput.value.length;
+        });
+
+        // Fetch and render notes
+        async function fetchNotes() {
+            try {
+                const response = await fetch(`${API_BASE}/get_notes.php?limit=50`);
+                const notes = await response.json();
+                
+                if (Array.isArray(notes)) {
+                    board.innerHTML = '';
+                    notes.forEach(note => {
+                        createNoteElement(note);
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching notes:', error);
+            }
+        }
+
+        // Create a note element
+        function createNoteElement(note) {
+            const noteEl = document.createElement('div');
+            noteEl.className = 'note';
+            noteEl.dataset.id = note.id;
+            noteEl.dataset.posX = note.pos_x;
+            noteEl.dataset.posY = note.pos_y;
+            
+            noteEl.style.left = `${note.pos_x}px`;
+            noteEl.style.top = `${note.pos_y}px`;
+            
+            const timestamp = new Date(note.created_at).toLocaleString();
+            
+            noteEl.innerHTML = `
+                <div class="note-header">
+                    <span>${escapeHtml(note.username)}</span>
+                    <span>${timestamp}</span>
+                </div>
+                <div class="note-content">${escapeHtml(note.content)}</div>
+            `;
+            
+            board.appendChild(noteEl);
+            makeDraggable(noteEl);
+        }
+
+        // Make an element draggable
+        function makeDraggable(element) {
+            let startX, startY, initialX, initialY;
+            let isDragging = false;
+
+            const startDrag = (e) => {
+                e.preventDefault();
+                isDragging = true;
+                const clientX = e.clientX || e.touches[0].clientX;
+                const clientY = e.clientY || e.touches[0].clientY;
+                
+                startX = clientX;
+                startY = clientY;
+                initialX = parseInt(element.style.left || element.dataset.posX || 0);
+                initialY = parseInt(element.style.top || element.dataset.posY || 0);
+                
+                element.classList.add('dragging');
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('touchmove', drag);
+                document.addEventListener('mouseup', endDrag);
+                document.addEventListener('touchend', endDrag);
+            };
+
+            const drag = (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const clientX = e.clientX || e.touches[0].clientX;
+                const clientY = e.clientY || e.touches[0].clientY;
+                
+                const deltaX = clientX - startX;
+                const deltaY = clientY - startY;
+                
+                let newX = initialX + deltaX;
+                let newY = initialY + deltaY;
+                
+                // Constrain within board
+                newX = Math.max(0, Math.min(newX, board.clientWidth - element.clientWidth));
+                newY = Math.max(0, Math.min(newY, board.clientHeight - element.clientHeight));
+                
+                element.style.left = `${newX}px`;
+                element.style.top = `${newY}px`;
+            };
+
+            const endDrag = async () => {
+                if (!isDragging) return;
+                isDragging = false;
+                element.classList.remove('dragging');
+                
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('touchmove', drag);
+                document.removeEventListener('mouseup', endDrag);
+                document.removeEventListener('touchend', endDrag);
+                
+                const finalX = parseInt(element.style.left || element.dataset.posX || 0);
+                const finalY = parseInt(element.style.top || element.dataset.posY || 0);
+                
+                // Only update if position changed
+                if (finalX != element.dataset.posX || finalY != element.dataset.posY) {
+                    try {
+                        await updateNotePosition(element.dataset.id, finalX, finalY);
+                        element.dataset.posX = finalX;
+                        element.dataset.posY = finalY;
+                    } catch (error) {
+                        console.error('Error updating position:', error);
+                        // Revert visually (optional)
+                        element.style.left = `${element.dataset.posX}px`;
+                        element.style.top = `${element.dataset.posY}px`;
+                    }
+                }
+            };
+
+            element.addEventListener('mousedown', startDrag);
+            element.addEventListener('touchstart', startDrag);
+        }
+
+        // Update note position in DB
+        async function updateNotePosition(id, x, y) {
+            const response = await fetch(`${API_BASE}/update_note_position.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id, pos_x: x, pos_y: y })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to update position');
+            }
+        }
+
+        // Post a new note
+        postBtn.addEventListener('click', async () => {
+            const username = usernameInput.value.trim();
+            const content = contentInput.value.trim();
+
+            if (!username) {
+                postError.textContent = 'Please enter your name';
+                return;
+            }
+
+            if (!content || content.length > 300) {
+                postError.textContent = 'Content must be 1-300 characters';
+                return;
+            }
+
+            postError.textContent = '';
+            postBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/add_note.php`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, content })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to post note');
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    contentInput.value = '';
+                    charCount.textContent = '0';
+                    await fetchNotes(); // Refresh board
+                }
+            } catch (error) {
+                postError.textContent = 'Error posting note. Please try again.';
+                console.error('Post error:', error);
+            } finally {
+                postBtn.disabled = false;
+            }
+        });
+
+        // Simple HTML escaping to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initial load
+        fetchNotes();
+    </script>
+</body>
+</html>
